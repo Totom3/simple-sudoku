@@ -27,10 +27,10 @@ import javax.swing.border.MatteBorder;
  */
 public class SudokuGUI extends JFrame {
 
-	private static final int SUDOKU_HOLES = 50;
+	private static final int SUDOKU_HOLES = 2;
 
 	private static final String INSTRUCTIONS = "<html><p><b>Instructions:</b> every row, column, and square region must contain all<br /> digits from 1-9 exactly once. Using the given clues, try to fill the entire <br />board as fast as you can! Use arrow keys or the mouse to navigate.</p></html>";
-	private static final String FOOTER = "Sudoku made by Tomer Moran (2017)";
+	private static final String FOOTER = "Sudoku made by Totom3 (2017)";
 	private static final String GENERATE_BOARD_TEXT = "Generate New";
 	private static final String CHECK_ANSWER_TEXT = "Check Answer";
 
@@ -59,6 +59,7 @@ public class SudokuGUI extends JFrame {
 
 	private boolean finished;
 
+	private int errors;
 	private volatile int time; // in seconds
 
 	/**
@@ -69,7 +70,7 @@ public class SudokuGUI extends JFrame {
 
 	public void start() {
 		setSize(800, 800);
-		setTitle("Sudoku Game by Tomer Moran");
+		setTitle("Sudoku Game by Totom3");
 		setLocationRelativeTo(null);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -121,9 +122,23 @@ public class SudokuGUI extends JFrame {
 			if (finished)
 				return;
 
+			boolean isValid = true;
 			for (int row = 0; row < 9; ++row) {
 				for (int column = 0; column < 9; ++column) {
-					cells[row][column].checkAnswer();
+					isValid = isValid & cells[row][column].checkAnswer();
+				}
+			}
+
+			if (isValid) {
+				finished = true;
+
+				// Stop timer
+				++gameUid;
+
+				for (int row = 0; row < 9; ++row) {
+					for (int column = 0; column < 9; ++column) {
+						cells[row][column].setBackground(CELL_BACKGROUND_CORRECT);
+					}
 				}
 			}
 		});
@@ -187,7 +202,8 @@ public class SudokuGUI extends JFrame {
 			}
 		}
 
-		updateTime(0);
+		setErrors(0);
+		setTime(0);
 		gameUid++;
 		startTimer();
 	}
@@ -206,16 +222,21 @@ public class SudokuGUI extends JFrame {
 					break;
 
 				SwingUtilities.invokeLater(() -> {
-					updateTime(++time);
+					setTime(++time);
 				});
 			}
 
 		}).start();
 	}
 
-	private void updateTime(int time) {
+	private void setTime(int time) {
 		this.time = time;
 		timeLabel.setText(getTimeLabelText(time));
+	}
+
+	private void setErrors(int errors) {
+		this.errors = errors;
+		errorsLabel.setText(getErrorsLabelText(errors));
 	}
 
 	private static int getDigit(int keyCode) {
@@ -260,7 +281,6 @@ public class SudokuGUI extends JFrame {
 		return "<html><b>Time:</b> " + TIME_FORMAT.format(minutes) + ":" + TIME_FORMAT.format(seconds) + "</html>";
 	}
 
-	// TODO: implement actual error count display
 	private static String getErrorsLabelText(int errors) {
 		return "<html><b>Errors:</b> " + errors + "</html>";
 	}
@@ -407,15 +427,19 @@ public class SudokuGUI extends JFrame {
 			setFont(changeable ? PLAIN_FONT_L : BOLD_FONT_L);
 		}
 
-		void checkAnswer() {
-			if (!changeable || digit == 0)
-				return;
+		boolean checkAnswer() {
+			if (!changeable)
+				return true;
+			
+			if (digit == 0)
+				return false;
 
 			if (digit == solutionDigit) {
 				setChangeable(false);
 				setBackground(CELL_BACKGROUND_CORRECT);
 				revalidate();
 
+				final long currentGameUid = gameUid;
 				new Thread(() -> {
 					try {
 						Thread.sleep(5_000);
@@ -424,14 +448,18 @@ public class SudokuGUI extends JFrame {
 					}
 
 					SwingUtilities.invokeLater(() -> {
-						if (CELL_BACKGROUND_CORRECT.equals(getBackground()))
+						if (currentGameUid == gameUid && CELL_BACKGROUND_CORRECT.equals(getBackground()))
 							setBackground(CELL_BACKGROUND);
 					});
 				}).start();
+
+				return true;
 			} else {
 				setBackground(CELL_BACKGROUND_INCORRECT);
-			}
 
+				setErrors(errors + 1);
+				return false;
+			}
 		}
 
 		@Override
