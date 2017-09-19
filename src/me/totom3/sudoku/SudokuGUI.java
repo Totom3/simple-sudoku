@@ -10,6 +10,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.text.DecimalFormat;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -22,13 +23,13 @@ import javax.swing.border.MatteBorder;
 
 /**
  *
- * @author Tomer Moran
+ * @author Totom3
  */
 public class SudokuGUI extends JFrame {
 
-	private static final int SUDOKU_HOLES = 40;
+	private static final int SUDOKU_HOLES = 50;
 
-	private static final String INSTRUCTIONS = "<html><b>Instructions:</b> blablabla.</html>";
+	private static final String INSTRUCTIONS = "<html><p><b>Instructions:</b> every row, column, and square region must contain all<br /> digits from 1-9 exactly once. Using the given clues, try to fill the entire <br />board as fast as you can! Use arrow keys or the mouse to navigate.</p></html>";
 	private static final String FOOTER = "Sudoku made by Tomer Moran (2017)";
 	private static final String GENERATE_BOARD_TEXT = "Generate New";
 	private static final String CHECK_ANSWER_TEXT = "Check Answer";
@@ -57,6 +58,14 @@ public class SudokuGUI extends JFrame {
 	private SudokuBoardCell[][] cells;
 
 	private boolean finished;
+
+	private volatile int time; // in seconds
+
+	/**
+	 * Incremented every time a board is generated; used so timer thread know
+	 * when to stop.
+	 */
+	private long gameUid;
 
 	public void start() {
 		setSize(800, 800);
@@ -92,8 +101,8 @@ public class SudokuGUI extends JFrame {
 		footerPanel.setLayout(new BoxLayout(footerPanel, BoxLayout.Y_AXIS));
 
 		instructions = new JLabel(INSTRUCTIONS);
-		timeLabel = new JLabel(getTimeLabelText(-1));
-		errorsLabel = new JLabel(getErrorsLabelText(-1));
+		timeLabel = new JLabel(getTimeLabelText(0));
+		errorsLabel = new JLabel(getErrorsLabelText(0));
 		footerNote = new JLabel(FOOTER);
 
 		generateBoardButton = new JButton(GENERATE_BOARD_TEXT);
@@ -118,6 +127,7 @@ public class SudokuGUI extends JFrame {
 				}
 			}
 		});
+
 	}
 
 	private void buildPanels() {
@@ -137,7 +147,7 @@ public class SudokuGUI extends JFrame {
 
 		Insets insetsBottom = new Insets(0, 0, 20, 0);
 		contentPane.add(headerPanel, makeConstraints(0, 0, insetsBottom));
-		contentPane.add(bodyPanel, makeConstraints(0, 1, insetsBottom));
+		contentPane.add(bodyPanel, makeConstraints(0, 1, 0, 0, insetsBottom));
 		contentPane.add(footerPanel, makeConstraints(0, 2, insetsBottom));
 		add(contentPane);
 	}
@@ -160,6 +170,7 @@ public class SudokuGUI extends JFrame {
 
 	private void generateNewBoard() {
 		finished = false;
+
 		int[] sudoku = SudokuGenerator.generateSudoku();
 		int[] mask = SudokuMaskGenerator.generateMask(sudoku, SUDOKU_HOLES);
 
@@ -175,6 +186,36 @@ public class SudokuGUI extends JFrame {
 				cell.setBackground(CELL_BACKGROUND);
 			}
 		}
+
+		updateTime(0);
+		gameUid++;
+		startTimer();
+	}
+
+	private void startTimer() {
+		long uid = gameUid;
+		new Thread(() -> {
+			while (true) {
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException ex) {
+					throw new AssertionError(ex);
+				}
+
+				if (uid != gameUid)
+					break;
+
+				SwingUtilities.invokeLater(() -> {
+					updateTime(++time);
+				});
+			}
+
+		}).start();
+	}
+
+	private void updateTime(int time) {
+		this.time = time;
+		timeLabel.setText(getTimeLabelText(time));
 	}
 
 	private static int getDigit(int keyCode) {
@@ -211,14 +252,17 @@ public class SudokuGUI extends JFrame {
 		}
 	}
 
-	// TODO: implement actual time display
-	private static String getTimeLabelText(int seconds) {
-		return "<html><b>Time:</b> _____</html>";
+	private static final DecimalFormat TIME_FORMAT = new DecimalFormat("00");
+
+	private static String getTimeLabelText(int time) {
+		int seconds = time % 60;
+		int minutes = time / 60;
+		return "<html><b>Time:</b> " + TIME_FORMAT.format(minutes) + ":" + TIME_FORMAT.format(seconds) + "</html>";
 	}
 
 	// TODO: implement actual error count display
 	private static String getErrorsLabelText(int errors) {
-		return "<html><b>Errors:</b> _____</html>";
+		return "<html><b>Errors:</b> " + errors + "</html>";
 	}
 
 	private static final Insets ZERO_INSETS = new Insets(0, 0, 0, 0);
@@ -371,23 +415,23 @@ public class SudokuGUI extends JFrame {
 				setChangeable(false);
 				setBackground(CELL_BACKGROUND_CORRECT);
 				revalidate();
-				
-				new Thread(() -> {
-				try {
-					Thread.sleep(5_000);
-				} catch (InterruptedException ex) {
-					throw new AssertionError(ex);
-				}
 
-				SwingUtilities.invokeLater(() -> {
-					if (CELL_BACKGROUND_CORRECT.equals(getBackground()))
-						setBackground(CELL_BACKGROUND);
-				});
-			}).start();
+				new Thread(() -> {
+					try {
+						Thread.sleep(5_000);
+					} catch (InterruptedException ex) {
+						throw new AssertionError(ex);
+					}
+
+					SwingUtilities.invokeLater(() -> {
+						if (CELL_BACKGROUND_CORRECT.equals(getBackground()))
+							setBackground(CELL_BACKGROUND);
+					});
+				}).start();
 			} else {
 				setBackground(CELL_BACKGROUND_INCORRECT);
 			}
-			
+
 		}
 
 		@Override

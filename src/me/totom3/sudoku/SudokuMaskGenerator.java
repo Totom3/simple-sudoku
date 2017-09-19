@@ -6,7 +6,7 @@ import java.util.ListIterator;
 
 /**
  *
- * @author Tomer Moran
+ * @author Totom3
  */
 public class SudokuMaskGenerator {
 

@@ -9,7 +9,7 @@ import java.util.Set;
 
 /**
  *
- * @author Tomer Moran
+ * @author Totom3
  */
 public class SudokuSolver {
 

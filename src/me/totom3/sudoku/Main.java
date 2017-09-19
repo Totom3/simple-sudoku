@@ -2,7 +2,7 @@ package me.totom3.sudoku;
 
 /**
  *
- * @author Tomer Moran
+ * @author Totom3
  */
 public class Main {
 
