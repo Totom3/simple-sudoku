@@ -27,7 +27,7 @@ import javax.swing.border.MatteBorder;
  */
 public class SudokuGUI extends JFrame {
 
-	private static final int SUDOKU_HOLES = 2;
+	private static final int SUDOKU_HOLES = 50;
 
 	private static final String INSTRUCTIONS = "<html><p><b>Instructions:</b> every row, column, and square region must contain all<br /> digits from 1-9 exactly once. Using the given clues, try to fill the entire <br />board as fast as you can! Use arrow keys or the mouse to navigate.</p></html>";
 	private static final String FOOTER = "Sudoku made by Totom3 (2017)";
